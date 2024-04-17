@@ -130,7 +130,7 @@ int main(int argc, char * argv[])
     delete[] image;
 
     // Сохранение изображения
-    cv::imwrite("/home/jenkism/Desktop/laba4/new_image_gray.jpg", image_result, compression_params);
+    cv::imwrite("new_image_gray.jpg", image_result, compression_params);
 
     // Изменение размера окна
     cv::resizeWindow("Image Window", 720, 480);
