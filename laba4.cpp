@@ -43,9 +43,9 @@ void applySobelFilter(int** image, int row, int cols, int** result)
 int main(int argc, char * argv[]) 
 {
     char path[250] = "\0";        // Путь к файлу
-    //strcpy(path, argv[2]);      // Получение пути из параметров запуска
+    strcpy(path, argv[1]);      // Получение пути из параметров запуска
 
-    strcpy(path, "/home/jenkism/Desktop/laba4/nature-landscape-with-vegetation-flora.jpg");
+    //strcpy(path, "/home/jenkism/Desktop/laba4/nature-landscape-with-vegetation-flora.jpg");
 
     // Загрузка изображения по path
     cv::Mat img = cv::imread(path, cv::IMREAD_COLOR);
@@ -115,12 +115,27 @@ int main(int argc, char * argv[])
     for (int y = 1; y < img.rows - 1; ++y) {
         for (int x = 1; x < img.cols - 1; ++x) {
             // Пример: установка значений пикселя
-            image_result.at<uchar>(y, x) = image[y][x];  // Значение пикселя зависит от его координат
+            image_result.at<uchar>(y, x) = result[y][x];  // Значение пикселя зависит от его координат
         }
     }
 
+    std::vector<int> compression_params;
+    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(30);
+
+    for(int i = 0; i < img.rows; ++i)
+    {
+        delete[] image[i];
+    }
+    delete[] image;
+
     // Сохранение изображения
-    cv::imwrite("/home/jenkism/Desktop/laba4/new_image_gray.jpg", image_result);
+    cv::imwrite("/home/jenkism/Desktop/laba4/new_image_gray.jpg", image_result, compression_params);
+
+    // Изменение размера окна
+    cv::resizeWindow("Image Window", 720, 480);
+    cv::imshow("Image Window", image_result);
+    cv::waitKey(0);
 
     return 0;
 }
