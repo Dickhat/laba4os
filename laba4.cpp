@@ -42,10 +42,8 @@ void applySobelFilter(int** image, int row, int cols, int** result)
 
 int main(int argc, char * argv[]) 
 {
-    char path[250] = "\0";        // Путь к файлу
-    strcpy(path, argv[1]);      // Получение пути из параметров запуска
-
-    //strcpy(path, "/home/jenkism/Desktop/laba4/nature-landscape-with-vegetation-flora.jpg");
+    char path[250] = "\0";          // Путь к файлу
+    strcpy(path, argv[1]);          // Получение пути из параметров запуска
 
     // Загрузка изображения по path
     cv::Mat img = cv::imread(path, cv::IMREAD_COLOR);
@@ -73,21 +71,8 @@ int main(int argc, char * argv[])
 
             // Заполнение массива пикселей каналом RED
             image[i][j] = int(pixel[2]);
-
-            //std::cout << image[i][j]<< " ";
         }
-        //std::cout <<std::endl;
     }
-
-    // Передача изображения в фильтр Собеля
-    for(int row = 0; row < 3; ++row)
-    {
-        for(int cols = 0; cols < 3; ++cols)
-        {
-            std::cout<<image[row][cols] << " ";
-        }
-        std::cout<<std::endl;
-    } 
 
     // Передача изображения в фильтр Собеля
     for(int row = 1; row < img.rows - 1; ++row)
@@ -97,16 +82,6 @@ int main(int argc, char * argv[])
             applySobelFilter(image, row, cols, result);
         }
     }
-
-        // Передача изображения в фильтр Собеля
-    for(int row = 0; row < 3; ++row)
-    {
-        for(int cols = 0; cols < 3; ++cols)
-        {
-            std::cout<<result[row][cols] << " ";
-        }
-        std::cout<<std::endl;
-    } 
 
     // Создание матрицы для изображения
     cv::Mat image_result(img.rows, img.cols, CV_8UC1, cv::Scalar(0));
@@ -119,9 +94,14 @@ int main(int argc, char * argv[])
         }
     }
 
-    std::vector<int> compression_params;
-    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(30);
+    //std::vector<int> compression_params;
+    //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    //compression_params.push_back(30);
+
+    // Сохранение изображения
+    cv::imwrite("new_image_gray.jpg", image_result);//, compression_params);
+
+    // О Ч И С Т К А    П А М Я Т И
 
     for(int i = 0; i < img.rows; ++i)
     {
@@ -129,13 +109,11 @@ int main(int argc, char * argv[])
     }
     delete[] image;
 
-    // Сохранение изображения
-    cv::imwrite("new_image_gray.jpg", image_result, compression_params);
-
-    // Изменение размера окна
-    cv::resizeWindow("Image Window", 720, 480);
-    cv::imshow("Image Window", image_result);
-    cv::waitKey(0);
+    for(int i = 0; i < img.rows; ++i)
+    {
+        delete[] result[i];
+    }
+    delete[] result;
 
     return 0;
 }
