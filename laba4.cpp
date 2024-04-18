@@ -3,41 +3,61 @@
 #include <math.h>
 #include <opencv4/opencv2/opencv.hpp>
 
-// Функция для применения фильтра Собела к изображению
-void applySobelFilter(int** image, int row, int cols, int** result) 
+// Параметры для фунции
+typedef struct
 {
-    int gx, gy;
+    int** image;    // Исходное изображение
+    int** result;   // результат применения Собеля к изображению
+    int row;        // текущая обрабатываемая строка
+    int image_rows; // общее число столбцов изображения
+    int image_cols; // общее число строк изображения
+    int threads;     // число потоков обрабатывающих изображение
+} args_t;
 
-    // Ядро фильтра Собела по оси X
-    int kernelX[3][3] = {
-        {-1, 0, 1},
-        {-2, 0, 2},
-        {-1, 0, 1}
-    };
-
-    // Ядро фильтра Собела по оси Y
-    int kernelY[3][3] = {
-        {1, 2, 1},
-        {0, 0, 0},
-        {-1, -2, -1}      
-    };
-
-    gx = 0;
-    gy = 0;
-
-    // Применяем ядра фильтра Собела к пикселям изображения
-    for (int k = -1; k <= 1; k++) 
+// Функция для применения фильтра Собела к изображению
+void * applySobelFilter(void * args)   
+{
+    args_t *data = (args_t*) args;
+    // Цикл обработки строк каждым потоком (приращение на число потоков)
+    for(; data->row < (data->image_rows - 1); data->row += data->threads)
     {
-        for (int l = -1; l <= 1; l++) 
-        {
-            gx += image[row + k][cols + l] * kernelX[k + 1][l + 1];
-            gy += image[row + k][cols + l] * kernelY[k + 1][l + 1];
+        for(int cols = 1; cols < data->image_cols - 1; ++cols)
+        {        
+            int gx, gy;
+
+            // Ядро фильтра Собела по оси X
+            int kernelX[3][3] = {
+                {-1, 0, 1},
+                {-2, 0, 2},
+                {-1, 0, 1}
+            };
+
+            // Ядро фильтра Собела по оси Y
+            int kernelY[3][3] = {
+                {1, 2, 1},
+                {0, 0, 0},
+                {-1, -2, -1}      
+            };
+
+            gx = 0;
+            gy = 0;
+
+            // Применяем ядра фильтра Собела к пикселям изображения
+            for (int k = -1; k <= 1; k++) 
+            {
+                for (int l = -1; l <= 1; l++) 
+                {
+                    gx += data->image[data->row + k][cols + l] * kernelX[k + 1][l + 1];
+                    gy += data->image[data->row + k][cols + l] * kernelY[k + 1][l + 1];
+                }
+            }
+
+            // Вычисляем градиент изображения
+            data->result[data->row][cols] = fmin(255, fmax(0, sqrt(gx * gx + gy * gy)));
         }
     }
 
-    // Вычисляем градиент изображения
-    
-    result[row][cols] = fmin(255, fmax(0, sqrt(gx * gx + gy * gy)));
+    pthread_exit(0);
 }
 
 int main(int argc, char * argv[]) 
@@ -74,13 +94,31 @@ int main(int argc, char * argv[])
         }
     }
 
+    
+    int threads = 32;                                        // Число работающих потоков: 1, 2, 4, 8, 16, 32.
+    pthread_t * massive_threads = new pthread_t[threads];   // Массив созданных потоков
+    args_t * massive_threads_args = new args_t[threads];    // Массив данных(аргументов) для потоков
+
     // Передача изображения в фильтр Собеля
-    for(int row = 1; row < img.rows - 1; ++row)
+    for(int row = 1; (row < img.rows - 1) && (row <= threads); ++row)
     {
-        for(int cols = 1; cols < img.cols - 1; ++cols)
-        {
-            applySobelFilter(image, row, cols, result);
-        }
+        massive_threads_args[row - 1].image = image;
+        massive_threads_args[row - 1].image_cols = img.cols;
+        massive_threads_args[row - 1].image_rows = img.rows;
+        massive_threads_args[row - 1].result = result;
+        massive_threads_args[row - 1].row = row;
+        massive_threads_args[row - 1].threads = threads;
+
+        // Создание потока
+        pthread_create(&massive_threads[row - 1], NULL, applySobelFilter, (void*) &massive_threads_args[row - 1]);
+
+        //applySobelFilter(image, result, row, img.rows, img.cols, threads);
+    }
+
+    // Ожидание окончания работы потоков
+    for(int i = 0; i < threads; ++i)
+    {
+        pthread_join(massive_threads[i], NULL);
     }
 
     // Создание матрицы для изображения
@@ -94,6 +132,7 @@ int main(int argc, char * argv[])
         }
     }
 
+    // Изменение качества выходного изображения
     //std::vector<int> compression_params;
     //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
     //compression_params.push_back(30);
@@ -102,18 +141,15 @@ int main(int argc, char * argv[])
     cv::imwrite("new_image_gray.jpg", image_result);//, compression_params);
 
     // О Ч И С Т К А    П А М Я Т И
-
     for(int i = 0; i < img.rows; ++i)
     {
         delete[] image[i];
-    }
-    delete[] image;
-
-    for(int i = 0; i < img.rows; ++i)
-    {
         delete[] result[i];
     }
+    delete[] image;
     delete[] result;
+    delete[] massive_threads;
+    delete[] massive_threads_args;
 
     return 0;
 }
